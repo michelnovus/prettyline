@@ -5,7 +5,23 @@ use clap::Parser;
 
 fn main() -> Result<()> {
     let args = setup::Args::parse();
-    println!("{:#?}", args);
+
+    if args.init.is_some() {
+        return match args.init.unwrap() {
+            setup::ShellName::Bash => {
+                setup::install::bash();
+                Ok(())
+            }
+            setup::ShellName::Zsh => {
+                setup::install::zsh();
+                Ok(())
+            }
+            setup::ShellName::Fish => {
+                setup::install::fish();
+                Ok(())
+            }
+        };
+    }
 
     Ok(())
 }
@@ -18,8 +34,8 @@ pub mod setup {
         group = ArgGroup::new("init-conflict")
             .arg("show_lprompt")
             .arg("show_lprompt")
-            .conflicts_with("init")
-            
+            .arg("exit_status")
+            .conflicts_with("init")           
     )]
     pub struct Args {
         /// Sets shell settings.
@@ -29,6 +45,8 @@ pub mod setup {
         pub show_lprompt: bool,
         #[arg(long, hide = true)]
         pub show_rprompt: bool,
+        #[arg(long, hide = true)]
+        pub exit_status: Option<u8>,
     }
 
     #[derive(Debug, Clone, Copy, ValueEnum)]
@@ -48,14 +66,13 @@ pub mod setup {
         pub fn fish() {
             let script = "\
             function fish_prompt\n    \
-                    command prettyline\n\
-                end\n\
-                function fish_right_prompt\n    \
-                command prettyline\n\
-                end\n
-                ";
+                command prettyline --show-lprompt --exit_status $status\n\
+            end\n\
+            function fish_right_prompt\n    \
+                command prettyline --show-lprompt\n\
+            end\
+            ";
             println!("{}", script);
-            unimplemented!();
         }
     }
 }
