@@ -1,0 +1,14 @@
+[package]
+name = "prettyline"
+version = "0.1.0"
+publish = false
+edition = "2021"
+authors = ["Michel Novus <michelnovus@gmail.com>"]
+description = ""
+readme = "../README.md"
+repository = "https://github.com/michelnovus/prettyline"
+license = "MIT"
+keywords = ["prompt", "command-line"]
+categories = ["command-line-utilities"]
+
+[dependencies]
