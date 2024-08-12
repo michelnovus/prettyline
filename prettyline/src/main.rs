@@ -5,18 +5,30 @@ use clap::Parser;
 
 fn main() -> Result<()> {
     let args = setup::Args::parse();
+    println!("{:#?}", args);
 
     Ok(())
 }
 
 pub mod setup {
-    use clap::{Parser, ValueEnum};
+    use clap::{ArgGroup, Parser, ValueEnum};
 
     #[derive(Debug, Parser)]
+    #[command(
+        group = ArgGroup::new("init-conflict")
+            .arg("show_lprompt")
+            .arg("show_lprompt")
+            .conflicts_with("init")
+            
+    )]
     pub struct Args {
         /// Sets shell settings.
         #[arg(long, value_name = "SHELL")]
         pub init: Option<ShellName>,
+        #[arg(long, hide = true)]
+        pub show_lprompt: bool,
+        #[arg(long, hide = true)]
+        pub show_rprompt: bool,
     }
 
     #[derive(Debug, Clone, Copy, ValueEnum)]
