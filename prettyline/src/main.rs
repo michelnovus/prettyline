@@ -1,75 +1,146 @@
 // [MIT License] Copyright (c) 2024 Michel Novus
 
+use anstyle::RgbColor;
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use constants::{colors, symbols};
-use std::env;
+use std::{
+    env,
+    io::{self, prelude::*},
+};
 
 fn main() -> Result<()> {
     let args = setup::Args::parse();
 
     if args.init.is_some() {
         return match args.init.unwrap() {
-            setup::ShellName::Bash => {
-                setup::install::bash();
-                Ok(())
-            }
-            setup::ShellName::Zsh => {
-                setup::install::zsh();
-                Ok(())
-            }
-            setup::ShellName::Fish => {
-                setup::install::fish();
-                Ok(())
-            }
+            setup::ShellName::Bash => Ok(setup::install::bash()),
+            setup::ShellName::Zsh => Ok(setup::install::zsh()),
+            setup::ShellName::Fish => Ok(setup::install::fish()),
         };
     }
 
-    let mut left_prompt: Vec<prompt::Segment> = vec![];
+    let left_prompt: String = {
+        let mut segments: Vec<prompt::Segment> = vec![];
 
-    let username = match env::var_os("USER")
-        .unwrap_or_else(|| "???".into())
-        .into_string()
-    {
-        Ok(val) => val,
-        Err(_) => {
-            return Err(anyhow!(
-                "It seems that the username has strange characters"
-            ))
-        }
-    };
-    let user_segment = prompt::Segment {
-        left: None,
-        center: prompt::Chunk::new(&username)
-            .fg(colors::USER_NORM_FG)
-            .bg(colors::USER_NORM_BG)
-            .weight(prompt::TextWeight::Bold)
-            .pad(),
-        right: Some(
-            prompt::Chunk::new(symbols::R_ANGLED_FILL).fg(colors::USER_NORM_BG),
-        ),
-    };
-    left_prompt.push(user_segment);
+        let username = match env::var_os("USER")
+            .unwrap_or_else(|| "???".into())
+            .into_string()
+        {
+            Ok(val) => val,
+            Err(_) => {
+                return Err(anyhow!(
+                    "It seems that the username has strange characters"
+                ))
+            }
+        };
+        let user_segment = prompt::Segment {
+            left: None,
+            center: match username.as_str() {
+                "root" => prompt::Chunk::new(&username)
+                    .fg(colors::USER_ROOT_FG)
+                    .bg(colors::USER_ROOT_BG)
+                    .weight(prompt::TextWeight::Bold)
+                    .pad(),
+                _ => prompt::Chunk::new(&username)
+                    .fg(colors::USER_NORM_FG)
+                    .bg(colors::USER_NORM_BG)
+                    .weight(prompt::TextWeight::Bold)
+                    .pad(),
+            },
+            right: Some(match username.as_str() {
+                "root" => prompt::Chunk::new(symbols::R_ANGLED_FILL)
+                    .fg(colors::USER_ROOT_BG)
+                    .bg(RgbColor(18, 18, 18).into()),
+                _ => prompt::Chunk::new(symbols::R_ANGLED_FILL)
+                    .fg(colors::USER_NORM_BG)
+                    .bg(RgbColor(18, 18, 18).into()),
+            }),
+        };
+        segments.push(user_segment);
 
-    let git_segment = prompt::Segment {
-        left: None,
-        center: prompt::Chunk::new(""),
-        right: None,
-    };
-    left_prompt.push(git_segment);
+        // let git_branch = format!("{} branch", constants::symbols::BRANCH);
+        // let git_segment = prompt::Segment {
+        //     left: None,
+        //     center: prompt::Chunk::new(&git_branch).pad(),
+        //     right: None,
+        // };
+        // segments.push(git_segment);
 
-    let exit_status = match args.exit_status {
-        Some(value) => format!("E{}", value),
-        None => "E?".into(),
-    };
-    let exitcode_segment = prompt::Segment {
-        left: None,
-        center: prompt::Chunk::new(&exit_status),
-        right: None,
-    };
-    left_prompt.push(exitcode_segment);
+        let exit_status = match args.exit_status {
+            Some(value) => format!("E{}", value),
+            None => "E?".into(),
+        };
+        let (exit_color_fg, exit_color_bg) = match args.exit_status {
+            Some(val) if val == 0u8 => {
+                (colors::EXITCODE_SUCCESS_FG, colors::EXITCODE_SUCCESS_BG)
+            }
+            Some(val) if val != 0u8 => {
+                (colors::EXITCODE_FAILED_FG, colors::EXITCODE_FAILED_BG)
+            }
+            Some(_) => unreachable!(),
+            None => (colors::EXITCODE_FAILED_FG, colors::EXITCODE_FAILED_BG),
+        };
+        let exitcode_segment = prompt::Segment {
+            left: Some(
+                prompt::Chunk::new(constants::symbols::R_ANGLED_FILL)
+                    .fg(RgbColor(18, 18, 18).into())
+                    .bg(exit_color_bg),
+            ),
+            center: prompt::Chunk::new(&exit_status)
+                .fg(exit_color_fg)
+                .bg(exit_color_bg)
+                .pad(),
+            right: Some(
+                prompt::Chunk::new(constants::symbols::R_ANGLED_FILL)
+                    .fg(exit_color_bg),
+            ),
+        };
+        segments.push(exitcode_segment);
 
-    println!("{:#?}", left_prompt);
+        segments
+            .iter()
+            .map(|segment| segment.to_string())
+            .collect::<String>()
+    };
+
+    let right_prompt: String = {
+        let mut segments: Vec<prompt::Segment> = vec![];
+
+        let time = prompt::Segment {
+            left: Some(
+                prompt::Chunk::new(constants::symbols::L_CURVED_FILL)
+                    .fg(constants::colors::TIME_BG),
+            ),
+            center: prompt::Chunk::new("tiempo")
+                .bg(constants::colors::TIME_BG)
+                .fg(constants::colors::TIME_FG),
+            right: Some(
+                prompt::Chunk::new(constants::symbols::R_CURVED_FILL)
+                    .fg(constants::colors::TIME_BG),
+            ),
+        };
+        segments.push(time);
+
+        segments
+            .iter()
+            .map(|segment| segment.to_string())
+            .collect::<String>()
+    };
+
+    if args.show_lprompt {
+        let mut stdout = io::stdout();
+        stdout.write_all(left_prompt.as_bytes())?;
+        stdout.write(" ".as_bytes())?;
+        stdout.flush()?;
+    }
+    if args.show_rprompt {
+        let mut stdout = io::stdout();
+        stdout.write_all(right_prompt.as_bytes())?;
+        stdout.flush()?;
+    }
+
+    println!();
 
     Ok(())
 }
@@ -95,7 +166,7 @@ pub mod constants {
         pub const USER_SUDO_FG: Color = Color::Ansi(AnsiColor::Black);
         pub const USER_SUDO_BG: Color = Color::Ansi(AnsiColor::BrightYellow);
         pub const USER_ROOT_FG: Color = Color::Ansi(AnsiColor::Black);
-        pub const USER_ROOT_BG: Color = Color::Ansi(AnsiColor::BrightMagenta);
+        pub const USER_ROOT_BG: Color = Color::Ansi(AnsiColor::BrightRed);
 
         pub const EXITCODE_SUCCESS_FG: Color = Color::Ansi(AnsiColor::Black);
         pub const EXITCODE_SUCCESS_BG: Color =
@@ -109,19 +180,12 @@ pub mod constants {
 }
 
 pub mod setup {
-    use clap::{ArgGroup, Parser, ValueEnum};
+    use clap::{Parser, ValueEnum};
 
     #[derive(Debug, Parser)]
-    #[command(
-        group = ArgGroup::new("init-conflict")
-            .arg("show_lprompt")
-            .arg("show_lprompt")
-            .arg("exit_status")
-            .conflicts_with("init")           
-    )]
     pub struct Args {
         /// Sets shell settings.
-        #[arg(long, value_name = "SHELL")]
+        #[arg(long, value_name = "SHELL", exclusive = true)]
         pub init: Option<ShellName>,
         #[arg(long, hide = true)]
         pub show_lprompt: bool,
