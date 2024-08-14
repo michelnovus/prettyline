@@ -2,6 +2,7 @@
 
 use anstyle::RgbColor;
 use anyhow::{anyhow, Result};
+use chrono::Local;
 use clap::Parser;
 use constants::{colors, symbols};
 use std::{
@@ -59,14 +60,6 @@ fn main() -> Result<()> {
         };
         segments.push(user_segment);
 
-        // let git_branch = format!("{} branch", constants::symbols::BRANCH);
-        // let git_segment = prompt::Segment {
-        //     left: None,
-        //     center: prompt::Chunk::new(&git_branch).pad(),
-        //     right: None,
-        // };
-        // segments.push(git_segment);
-
         let exit_status = match args.exit_status {
             Some(value) => format!("E{}", value),
             None => "E?".into(),
@@ -107,14 +100,16 @@ fn main() -> Result<()> {
     let right_prompt: String = {
         let mut segments: Vec<prompt::Segment> = vec![];
 
+        let current_time: String = Local::now().format("%H:%M").to_string();
         let time = prompt::Segment {
             left: Some(
                 prompt::Chunk::new(constants::symbols::L_CURVED_FILL)
                     .fg(constants::colors::TIME_BG),
             ),
-            center: prompt::Chunk::new("tiempo")
+            center: prompt::Chunk::new(&current_time)
                 .bg(constants::colors::TIME_BG)
-                .fg(constants::colors::TIME_FG),
+                .fg(constants::colors::TIME_FG)
+                .weight(prompt::TextWeight::Dimm),
             right: Some(
                 prompt::Chunk::new(constants::symbols::R_CURVED_FILL)
                     .fg(constants::colors::TIME_BG),
@@ -137,6 +132,7 @@ fn main() -> Result<()> {
     if args.show_rprompt {
         let mut stdout = io::stdout();
         stdout.write_all(right_prompt.as_bytes())?;
+        stdout.write(" ".as_bytes())?;
         stdout.flush()?;
     }
 
@@ -145,7 +141,9 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+/// Symbols and colors are defined by constants here.
 pub mod constants {
+    /// Symbols that can be used at extremes of segments.
     pub mod symbols {
         pub const R_ANGLED_FILL: &'static str = "\u{E0B0}"; // 
         pub const L_ANGLED_FILL: &'static str = "\u{E0B2}"; // 
@@ -159,10 +157,13 @@ pub mod constants {
         pub const HONEYCOMB_FLAT: &'static str = "\u{E0CD}"; // 
         pub const BRANCH: &'static str = "\u{E0A0}"; // 
     }
+    /// The colors of segments background and text.
+    ///
+    /// Each color is defined as the `Color` enum of `anstyle` crate.
     pub mod colors {
         use anstyle::{AnsiColor, Color};
         pub const USER_NORM_FG: Color = Color::Ansi(AnsiColor::Black);
-        pub const USER_NORM_BG: Color = Color::Ansi(AnsiColor::White);
+        pub const USER_NORM_BG: Color = Color::Ansi(AnsiColor::BrightWhite);
         pub const USER_SUDO_FG: Color = Color::Ansi(AnsiColor::Black);
         pub const USER_SUDO_BG: Color = Color::Ansi(AnsiColor::BrightYellow);
         pub const USER_ROOT_FG: Color = Color::Ansi(AnsiColor::Black);
@@ -179,10 +180,21 @@ pub mod constants {
     }
 }
 
+/// Contains things related to program configuration.
 pub mod setup {
-    use clap::{Parser, ValueEnum};
+    use clap::{ArgGroup, Parser, ValueEnum};
 
+    /// Expected arguments entered when starting the program.
+    ///
+    /// The user only need call the `--init {SHELL}` argument inside
+    /// `eval "$(prettyline --init SHELLNAME)"`.
     #[derive(Debug, Parser)]
+    #[command(version, about, long_about=None, 
+        group = ArgGroup::new("required")
+            .args(&["init", "show_lprompt", "show_rprompt", "exit_status"])
+            .required(true)
+            .multiple(true)
+    )]
     pub struct Args {
         /// Sets shell settings.
         #[arg(long, value_name = "SHELL", exclusive = true)]
@@ -195,6 +207,7 @@ pub mod setup {
         pub exit_status: Option<u8>,
     }
 
+    /// Supported Shells.
     #[derive(Debug, Clone, Copy, ValueEnum)]
     pub enum ShellName {
         Bash,
@@ -202,6 +215,8 @@ pub mod setup {
         Fish,
     }
 
+    /// Each function prints to stdout the necessary configuration
+    /// to run the program correctly.
     pub mod install {
         pub fn bash() {
             unimplemented!()
@@ -212,10 +227,10 @@ pub mod setup {
         pub fn fish() {
             let script = "\
             function fish_prompt\n    \
-                command prettyline --show-lprompt --exit_status $status\n\
+                command prettyline --show-lprompt --exit-status $status\n\
             end\n\
             function fish_right_prompt\n    \
-                command prettyline --show-lprompt\n\
+                command prettyline --show-rprompt\n\
             end\
             ";
             println!("{}", script);
@@ -223,10 +238,17 @@ pub mod setup {
     }
 }
 
+/// Defines printable structures.
 pub mod prompt {
     use anstyle::{Color, Style};
     use std::fmt::Display;
 
+    /// Main element that allows to encapsulate each piece of the prompt.
+    ///
+    /// It contains three parts, the left character, the text in the middle
+    /// and the right character; the left and right characters are extremes
+    /// of the segment and should be one of those defined in the
+    /// `constants::symbols` module.
     #[derive(Debug)]
     pub struct Segment<'a> {
         pub left: Option<Chunk<'a>>,
@@ -248,18 +270,25 @@ pub mod prompt {
         }
     }
 
+    /// Defines whether the text should be thick (bold) or thin (dimm).
     #[derive(Debug)]
     pub enum TextWeight {
         Bold,
         Dimm,
     }
 
+    /// Defines how the text should appear.
     #[derive(Debug, Default)]
     pub struct Chunk<'a> {
+        /// The text.
         pub value: &'a str,
+        /// The text has a bold, dimm or normal (when it is `None`).
         pub weight: Option<TextWeight>,
+        /// The text color itself.
         pub fg_color: Option<Color>,
+        /// The background color of text.
         pub bg_color: Option<Color>,
+        /// Adds a spaces arround text.
         pad: bool,
     }
     impl<'a> Chunk<'a> {
@@ -272,18 +301,22 @@ pub mod prompt {
                 pad: false,
             }
         }
+        /// Sets the text color.
         pub fn fg(mut self, color: Color) -> Self {
             self.fg_color = Some(color);
             self
         }
+        /// Sets the background text color.
         pub fn bg(mut self, color: Color) -> Self {
             self.bg_color = Some(color);
             self
         }
+        /// Sets text weight (bold, dimm or normal).
         pub fn weight(mut self, weight: TextWeight) -> Self {
             self.weight = Some(weight);
             self
         }
+        /// Turn a spaces around text on or off.
         pub fn pad(mut self) -> Self {
             self.pad = !self.pad;
             self
