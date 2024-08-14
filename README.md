@@ -7,7 +7,7 @@ Prettyline customizes any shell prompt with a static style.
 
 | ![A prompt example](./assets/prompt_example.webp) |
 | :-----------------------------------------------: |
-|                *Prettyline v0.2.0*                |
+|                *Prettyline v0.3.0*                |
 
 ## Build and installation:
 
@@ -50,10 +50,10 @@ sudo cp target/release/prettyline /usr/local/bin/
 #### Initialization
 
 Once the program is installed, place the following line in the main shell 
-configuration file: `eval "$(prettyline --init SHELLNAME)"`[^1]
-- **Bash**: `eval "$(prettyline --init bash)"` in `~/.bashrc` or `/etc/bash.bashrc`
-- **Zsh**: `eval "$(prettyline --init zsh)"` in `~/.zshrc` or `/etc/zsh/zshrc`
-- **Fish**: `eval "$(prettyline --init fish)"` in `~/.config/fish/config.fish` 
+configuration file: `eval "$(prettyline --shell SHELLNAME --init)"`[^1]
+- **Bash**: `eval "$(prettyline --shell bash --init)"` in `~/.bashrc` or `/etc/bash.bashrc`
+- **Zsh**: `eval "$(prettyline --shell zsh --init)"` in `~/.zshrc` or `/etc/zsh/zshrc`
+- **Fish**: `eval "$(prettyline --shell fish --init)"` in `~/.config/fish/config.fish` 
   or `/etc/fish/config.fish`
 
 [^1]: *prettyline* binary is expected to be in the *PATH*, anyway you 
