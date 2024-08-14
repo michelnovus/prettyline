@@ -124,7 +124,10 @@ fn main() -> Result<()> {
     };
 
     let (left_prompt, right_prompt) = match args.shell {
-        setup::ShellName::Bash => unimplemented!(),
+        setup::ShellName::Bash => (
+            misc::ansi_escape_wrapper(&left_prompt, "\\[", "\\]"), 
+            misc::ansi_escape_wrapper(&right_prompt, "\\[", "\\]")
+        ),
         setup::ShellName::Zsh => {
             (
                 misc::ansi_escape_wrapper(&left_prompt, "%{", "%}"), 
@@ -229,8 +232,15 @@ pub mod setup {
     /// Each function prints to stdout the necessary configuration
     /// to run the program correctly.
     pub mod install {
-        pub fn bash() {
-            unimplemented!()
+        pub fn bash() {  // TODO: falta asignar el texto derecho!
+            let script = "\
+            prompt_function ()\n\
+            {\n    \
+                PS1=\"$(prettyline --shell bash --show-lprompt --exit-status $?)\"\n\
+            }\n
+            PROMPT_COMMAND=prompt_function\n\
+            ";
+            println!("{}", script);
         }
         pub fn zsh() {
             let script = "\
