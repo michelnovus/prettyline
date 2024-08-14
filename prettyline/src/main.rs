@@ -13,8 +13,8 @@ use std::{
 fn main() -> Result<()> {
     let args = setup::Args::parse();
 
-    if args.init.is_some() {
-        return match args.init.unwrap() {
+    if args.init {
+        return match args.shell {
             setup::ShellName::Bash => Ok(setup::install::bash()),
             setup::ShellName::Zsh => Ok(setup::install::zsh()),
             setup::ShellName::Fish => Ok(setup::install::fish()),
@@ -123,6 +123,17 @@ fn main() -> Result<()> {
             .collect::<String>()
     };
 
+    let (left_prompt, right_prompt) = match args.shell {
+        setup::ShellName::Bash => unimplemented!(),
+        setup::ShellName::Zsh => {
+            (
+                misc::ansi_escape_wrapper(&left_prompt, "%{", "%}"), 
+                misc::ansi_escape_wrapper(&right_prompt, "%{", "%}")
+            )
+        },
+        setup::ShellName::Fish => (left_prompt, right_prompt),
+    };
+
     if args.show_lprompt {
         let mut stdout = io::stdout();
         stdout.write_all(left_prompt.as_bytes())?;
@@ -135,8 +146,6 @@ fn main() -> Result<()> {
         stdout.write(" ".as_bytes())?;
         stdout.flush()?;
     }
-
-    println!();
 
     Ok(())
 }
@@ -191,14 +200,16 @@ pub mod setup {
     #[derive(Debug, Parser)]
     #[command(version, about, long_about=None, 
         group = ArgGroup::new("required")
-            .args(&["init", "show_lprompt", "show_rprompt", "exit_status"])
+            .args(&["init", "shell", "show_lprompt", "show_rprompt", "exit_status"])
             .required(true)
             .multiple(true)
     )]
     pub struct Args {
         /// Sets shell settings.
-        #[arg(long, value_name = "SHELL", exclusive = true)]
-        pub init: Option<ShellName>,
+        #[arg(long)]
+        pub init: bool,
+        #[arg(long, value_name = "SHELL")]
+        pub shell: ShellName,
         #[arg(long, hide = true)]
         pub show_lprompt: bool,
         #[arg(long, hide = true)]
@@ -222,19 +233,39 @@ pub mod setup {
             unimplemented!()
         }
         pub fn zsh() {
-            unimplemented!()
+            let script = "\
+            function precmd() {\n    \
+                PROMPT=\"$(prettyline --shell zsh --show-lprompt --exit-status $?)\"\n    \
+                RPROMPT=\"$(prettyline --shell zsh --show-rprompt)\"\n\
+            }\
+            ";
+            println!("{}", script);
         }
         pub fn fish() {
             let script = "\
             function fish_prompt\n    \
-                command prettyline --show-lprompt --exit-status $status\n\
+                command prettyline --shell fish --show-lprompt --exit-status $status\n\
             end\n\
             function fish_right_prompt\n    \
-                command prettyline --show-rprompt\n\
+                command prettyline --shell fish --show-rprompt\n\
             end\
             ";
             println!("{}", script);
         }
+    }
+}
+
+pub mod misc {
+    use regex::{Regex, Captures};
+
+    /// Wraps ANSI escape sequences inside `string` with the
+    /// supplied `start` and `end` characters.
+    pub fn ansi_escape_wrapper(string: &str, start: &str, end: &str) -> String {
+        let ansi_re = Regex::new(r"\u{1b}\[.*?m").unwrap();
+        ansi_re.replace_all(
+            string, 
+            |esc: &Captures| format!("{start}{}{end}", &esc[0])
+        ).to_string()
     }
 }
 
