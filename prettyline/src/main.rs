@@ -1,6 +1,6 @@
 // [MIT License] Copyright (c) 2024 Michel Novus
 
-use anstyle::RgbColor;
+use anstyle::{Color, RgbColor};
 use anyhow::{anyhow, Result};
 use chrono::Local;
 use clap::Parser;
@@ -19,9 +19,21 @@ fn main() -> Result<()> {
 
     if args.init {
         return match args.shell {
-            setup::ShellName::Bash => Ok(setup::install::bash()),
-            setup::ShellName::Zsh => Ok(setup::install::zsh()),
-            setup::ShellName::Fish => Ok(setup::install::fish()),
+            setup::ShellName::Bash => {
+                println!("export VIRTUAL_ENV_DISABLE_PROMPT=1");
+                setup::install::bash();
+                Ok(())
+            }
+            setup::ShellName::Zsh => {
+                println!("export VIRTUAL_ENV_DISABLE_PROMPT=1");
+                setup::install::zsh();
+                Ok(())
+            }
+            setup::ShellName::Fish => {
+                println!("set --export VIRTUAL_ENV_DISABLE_PROMPT 0");
+                setup::install::fish();
+                Ok(())
+            }
         };
     }
 
@@ -103,27 +115,39 @@ fn main() -> Result<()> {
 
     let right_prompt: String = {
         let mut segments: Vec<prompt::Segment> = vec![];
+        let left_chunk = |color: Color| {
+            prompt::Chunk::new(constants::symbols::L_CURVED_FILL).fg(color)
+        };
+        let right_chunk = |color: Color| {
+            prompt::Chunk::new(constants::symbols::R_CURVED_FILL).fg(color)
+        };
+
+        if env::var_os("VIRTUAL_ENV").is_some() {
+            let virtualenv_python = prompt::Segment {
+                left: Some(left_chunk(constants::colors::VENV_PYTHON_BG)),
+                center: prompt::Chunk::new("\u{E235}")
+                    .bg(constants::colors::VENV_PYTHON_BG)
+                    .fg(constants::colors::VENV_PYTHON_FG)
+                    .weight(prompt::TextWeight::Bold),
+                right: Some(right_chunk(constants::colors::VENV_PYTHON_BG)),
+            };
+            segments.push(virtualenv_python);
+        }
 
         let current_time: String = Local::now().format("%H:%M").to_string();
         let time = prompt::Segment {
-            left: Some(
-                prompt::Chunk::new(constants::symbols::L_CURVED_FILL)
-                    .fg(constants::colors::TIME_BG),
-            ),
+            left: Some(left_chunk(constants::colors::TIME_BG)),
             center: prompt::Chunk::new(&current_time)
                 .bg(constants::colors::TIME_BG)
                 .fg(constants::colors::TIME_FG)
                 .weight(prompt::TextWeight::Dimm),
-            right: Some(
-                prompt::Chunk::new(constants::symbols::R_CURVED_FILL)
-                    .fg(constants::colors::TIME_BG),
-            ),
+            right: Some(right_chunk(constants::colors::TIME_BG)),
         };
         segments.push(time);
 
         segments
             .iter()
-            .map(|segment| segment.to_string())
+            .map(|segment| format!(" {}", segment.to_string()))
             .collect::<String>()
     };
 

@@ -35,4 +35,7 @@ pub mod colors {
 
     pub const TIME_FG: Color = Color::Ansi(AnsiColor::Black);
     pub const TIME_BG: Color = Color::Ansi(AnsiColor::White);
+
+    pub const VENV_PYTHON_FG: Color = Color::Ansi(AnsiColor::BrightYellow);
+    pub const VENV_PYTHON_BG: Color = Color::Ansi(AnsiColor::BrightBlue);
 }
