@@ -1,6 +1,6 @@
 // [MIT License] Copyright (c) 2024 Michel Novus
 
-use anstyle::{Color, RgbColor};
+use anstyle::Color;
 use anyhow::{anyhow, Result};
 use chrono::Local;
 use clap::Parser;
@@ -30,12 +30,15 @@ fn main() -> Result<()> {
                 Ok(())
             }
             setup::ShellName::Fish => {
-                println!("set --export VIRTUAL_ENV_DISABLE_PROMPT 0");
+                println!("set --export VIRTUAL_ENV_DISABLE_PROMPT 1");
                 setup::install::fish();
                 Ok(())
             }
         };
     }
+
+    let terminal_background_color = misc::get_term_bg_color()
+        .unwrap_or_else(|| Color::Ansi(anstyle::AnsiColor::Black));
 
     let left_prompt: String = {
         let mut segments: Vec<prompt::Segment> = vec![];
@@ -68,10 +71,10 @@ fn main() -> Result<()> {
             right: Some(match username.as_str() {
                 "root" => prompt::Chunk::new(symbols::R_ANGLED_FILL)
                     .fg(colors::USER_ROOT_BG)
-                    .bg(RgbColor(18, 18, 18).into()),
+                    .bg(terminal_background_color),
                 _ => prompt::Chunk::new(symbols::R_ANGLED_FILL)
                     .fg(colors::USER_NORM_BG)
-                    .bg(RgbColor(18, 18, 18).into()),
+                    .bg(terminal_background_color),
             }),
         };
         segments.push(user_segment);
@@ -93,7 +96,7 @@ fn main() -> Result<()> {
         let exitcode_segment = prompt::Segment {
             left: Some(
                 prompt::Chunk::new(constants::symbols::R_ANGLED_FILL)
-                    .fg(RgbColor(18, 18, 18).into())
+                    .fg(terminal_background_color)
                     .bg(exit_color_bg),
             ),
             center: prompt::Chunk::new(&exit_status)
