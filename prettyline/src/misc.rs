@@ -43,3 +43,7 @@ pub fn get_term_bg_color() -> Option<Color> {
         None
     }
 }
+
+pub fn get_git_branch() -> Option<String> {
+    unimplemented!()
+}

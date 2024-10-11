@@ -18,23 +18,8 @@ fn main() -> Result<()> {
     let args = setup::Args::parse();
 
     if args.init {
-        return match args.shell {
-            setup::ShellName::Bash => {
-                println!("export VIRTUAL_ENV_DISABLE_PROMPT=1");
-                setup::install::bash();
-                Ok(())
-            }
-            setup::ShellName::Zsh => {
-                println!("export VIRTUAL_ENV_DISABLE_PROMPT=1");
-                setup::install::zsh();
-                Ok(())
-            }
-            setup::ShellName::Fish => {
-                println!("set --export VIRTUAL_ENV_DISABLE_PROMPT 1");
-                setup::install::fish();
-                Ok(())
-            }
-        };
+        setup::install(args.shell);
+        return Ok(());
     }
 
     let terminal_background_color = misc::get_term_bg_color()
@@ -79,6 +64,22 @@ fn main() -> Result<()> {
         };
         segments.push(user_segment);
 
+        // let inter_chunk = |fg: Color, bg: Color| {
+        //     prompt::Chunk::new(constants::symbols::R_ANGLED_FILL)
+        //         .fg(fg)
+        //         .bg(bg)
+        // };
+
+        // let git_branch = misc::get_git_branch();
+        // if git_branch.is_some() {
+        //     let git_branch_segment = prompt::Segment {
+        //         left: None,
+        //         center: prompt::Chunk::new(git_branch.as_ref().unwrap()),
+        //         right: None,
+        //     };
+        //     segments.push(git_branch_segment);
+        // }
+
         let exit_status = match args.exit_status {
             Some(value) => format!("E{}", value),
             None => "E?".into(),
@@ -110,10 +111,7 @@ fn main() -> Result<()> {
         };
         segments.push(exitcode_segment);
 
-        segments
-            .iter()
-            .map(|segment| segment.to_string())
-            .collect::<String>()
+        segments.iter().map(|segment| segment.to_string()).collect()
     };
 
     let right_prompt: String = {
@@ -143,7 +141,7 @@ fn main() -> Result<()> {
             center: prompt::Chunk::new(&current_time)
                 .bg(constants::colors::TIME_BG)
                 .fg(constants::colors::TIME_FG)
-                .weight(prompt::TextWeight::Dimm),
+                .weight(prompt::TextWeight::Bold),
             right: Some(right_chunk(constants::colors::TIME_BG)),
         };
         segments.push(time);

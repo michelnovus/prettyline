@@ -5,10 +5,10 @@ use clap::{ArgGroup, Parser, ValueEnum};
 
 /// Expected arguments entered when starting the program.
 ///
-/// The user only need call the `--init {SHELL}` argument inside
-/// `eval "$(prettyline --init SHELLNAME)"`.
+/// The user only need call the `--init --shell {SHELLNAME}` argument inside
+/// `eval "$(prettyline --init --shell {SHELLNAME})"`.
 #[derive(Debug, Parser)]
-#[command(version, about, long_about=None, 
+#[command(version, about, long_about=None,
     group = ArgGroup::new("required")
         .args(&["init", "shell", "show_lprompt", "show_rprompt", "exit_status"])
         .required(true)
@@ -36,37 +36,53 @@ pub enum ShellName {
     Fish,
 }
 
-/// Each function prints to stdout the necessary configuration
+/// The function prints to stdout the necessary configuration
 /// to run the program correctly.
-pub mod install {
-    pub fn bash() {  // TODO: falta asignar el texto derecho!
-        let script = "\
+pub fn install(shell_name: ShellName) {
+    match shell_name {
+        ShellName::Bash => {
+            println!("{}", shell::bash());
+            println!("export VIRTUAL_ENV_DISABLE_PROMPT=1")
+        }
+        ShellName::Fish => {
+            println!("{}", shell::fish());
+            println!("export VIRTUAL_ENV_DISABLE_PROMPT=1")
+        }
+        ShellName::Zsh => {
+            println!("{}", shell::zsh());
+            println!("set --export VIRTUAL_ENV_DISABLE_PROMPT 1")
+        }
+    }
+}
+
+/// Defines configuration of each shell in its shell language.
+mod shell {
+    pub fn bash() -> String {
+        // TODO: falta asignar el texto derecho!
+        "\
         prompt_function ()\n\
         {\n    \
             PS1=\"$(prettyline --shell bash --show-lprompt --exit-status $?)\"\n\
         }\n
         PROMPT_COMMAND=prompt_function\n\
-        ";
-        println!("{}", script);
+        ".into()
     }
-    pub fn zsh() {
-        let script = "\
+    pub fn zsh() -> String {
+        "\
         function precmd() {\n    \
             PROMPT=\"$(prettyline --shell zsh --show-lprompt --exit-status $?)\"\n    \
             RPROMPT=\"$(prettyline --shell zsh --show-rprompt)\"\n\
         }\
-        ";
-        println!("{}", script);
+        ".into()
     }
-    pub fn fish() {
-        let script = "\
+    pub fn fish() -> String {
+        "\
         function fish_prompt\n    \
             command prettyline --shell fish --show-lprompt --exit-status $status\n\
         end\n\
         function fish_right_prompt\n    \
             command prettyline --shell fish --show-rprompt\n\
         end\
-        ";
-        println!("{}", script);
+        ".into()
     }
 }

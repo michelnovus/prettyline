@@ -20,11 +20,11 @@ pub mod symbols {
 ///
 /// Each color is defined as the `Color` enum of `anstyle` crate.
 pub mod colors {
-    use anstyle::{AnsiColor, Color};
+    use anstyle::{Ansi256Color, AnsiColor, Color};
     pub const USER_NORM_FG: Color = Color::Ansi(AnsiColor::Black);
     pub const USER_NORM_BG: Color = Color::Ansi(AnsiColor::BrightWhite);
     pub const USER_SUDO_FG: Color = Color::Ansi(AnsiColor::Black);
-    pub const USER_SUDO_BG: Color = Color::Ansi(AnsiColor::BrightYellow);
+    pub const USER_SUDO_BG: Color = Color::Ansi256(Ansi256Color(55));
     pub const USER_ROOT_FG: Color = Color::Ansi(AnsiColor::Black);
     pub const USER_ROOT_BG: Color = Color::Ansi(AnsiColor::BrightRed);
 
@@ -33,9 +33,9 @@ pub mod colors {
     pub const EXITCODE_FAILED_FG: Color = Color::Ansi(AnsiColor::Black);
     pub const EXITCODE_FAILED_BG: Color = Color::Ansi(AnsiColor::BrightRed);
 
-    pub const TIME_FG: Color = Color::Ansi(AnsiColor::Black);
-    pub const TIME_BG: Color = Color::Ansi(AnsiColor::White);
+    pub const TIME_FG: Color = Color::Ansi(AnsiColor::White);
+    pub const TIME_BG: Color = Color::Ansi256(Ansi256Color(237));
 
-    pub const VENV_PYTHON_FG: Color = Color::Ansi(AnsiColor::BrightYellow);
-    pub const VENV_PYTHON_BG: Color = Color::Ansi(AnsiColor::BrightBlue);
+    pub const VENV_PYTHON_FG: Color = Color::Ansi256(Ansi256Color(220));
+    pub const VENV_PYTHON_BG: Color = Color::Ansi256(Ansi256Color(25));
 }
